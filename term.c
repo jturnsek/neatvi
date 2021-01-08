@@ -1,49 +1,31 @@
-#include <poll.h>
-#include <signal.h>
+#include <zephyr.h>
+#include <sys/printk.h>
+#include <console/console.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
-#include <termios.h>
 #include <unistd.h>
 #include "vi.h"
 
 static struct sbuf *term_sbuf;
 static int rows, cols;
-static struct termios termios;
 
 void term_init(void)
 {
-	struct winsize win;
-	struct termios newtermios;
-	tcgetattr(0, &termios);
-	newtermios = termios;
-	newtermios.c_lflag &= ~(ICANON | ISIG);
-	newtermios.c_lflag &= ~ECHO;
-	tcsetattr(0, TCSAFLUSH, &newtermios);
-	if (getenv("LINES"))
-		rows = atoi(getenv("LINES"));
-	if (getenv("COLUMNS"))
-		cols = atoi(getenv("COLUMNS"));
-	if (!ioctl(0, TIOCGWINSZ, &win)) {
-		cols = win.ws_col;
-		rows = win.ws_row;
-	}
-	cols = cols ? cols : 80;
-	rows = rows ? rows : 25;
+	console_init();
+	cols = 80;
+	rows = 25;
 	term_str("\33[m");
 }
 
 void term_done(void)
 {
 	term_commit();
-	tcsetattr(0, 0, &termios);
 }
 
 void term_suspend(void)
 {
 	term_done();
-	kill(getpid(), SIGSTOP);
 	term_init();
 }
 
@@ -56,7 +38,8 @@ void term_record(void)
 void term_commit(void)
 {
 	if (term_sbuf) {
-		write(1, sbuf_buf(term_sbuf), sbuf_len(term_sbuf));
+		//write(1, sbuf_buf(term_sbuf), sbuf_len(term_sbuf));
+		fwrite(sbuf_buf(term_sbuf), 1, sbuf_len(term_sbuf), stdout);
 		sbuf_free(term_sbuf);
 		term_sbuf = NULL;
 	}
@@ -67,7 +50,9 @@ static void term_out(char *s)
 	if (term_sbuf)
 		sbuf_str(term_sbuf, s);
 	else
-		write(1, s, strlen(s));
+		//write(1, s, strlen(s));
+		fwrite(s, 1, strlen(s), stdout);
+
 }
 
 void term_str(char *s)
@@ -144,16 +129,12 @@ char *term_cmd(int *n)
 
 int term_read(void)
 {
-	struct pollfd ufds[1];
 	int n, c;
 	if (ibuf_pos >= ibuf_cnt) {
-		ufds[0].fd = 0;
-		ufds[0].events = POLLIN;
-		if (poll(ufds, 1, -1) <= 0)
-			return -1;
 		/* read a single input character */
-		if ((n = read(0, ibuf, 1)) <= 0)
-			return -1;
+		//if ((n = read(0, ibuf, 1)) <= 0)
+		*ibuf = console_getchar();
+
 		ibuf_cnt = n;
 		ibuf_pos = 0;
 	}

@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <zephyr.h>
+#include <fs/fs.h>
 #include "vi.h"
 
 #define NMARKS_BASE		('z' - 'a' + 2)
@@ -210,13 +212,13 @@ static void lbuf_opt(struct lbuf *lb, char *buf, int pos, int n_del)
 			lbuf_savemark(lb, lo, i);
 }
 
-int lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end)
+int lbuf_rd(struct lbuf *lbuf, struct fs_file_t *fd, int beg, int end)
 {
 	char buf[1 << 10];
 	struct sbuf *sb;
 	long nr;
 	sb = sbuf_make();
-	while ((nr = read(fd, buf, sizeof(buf))) > 0)
+	while ((nr = (long)fs_read(fd, buf, sizeof(buf))) > 0)
 		sbuf_mem(sb, buf, nr);
 	if (!nr)
 		lbuf_edit(lbuf, sbuf_buf(sb), beg, end);
@@ -224,7 +226,7 @@ int lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end)
 	return nr != 0;
 }
 
-int lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end)
+int lbuf_wr(struct lbuf *lbuf, struct fs_file_t *fd, int beg, int end)
 {
 	int i;
 	for (i = beg; i < end; i++) {
@@ -232,7 +234,7 @@ int lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end)
 		long nw = 0;
 		long nl = strlen(ln);
 		while (nw < nl) {
-			long nc = write(fd, ln + nw, nl - nw);
+			long nc = (long)fs_write(fd, ln + nw, nl - nw);
 			if (nc < 0)
 				return 1;
 			nw += nc;

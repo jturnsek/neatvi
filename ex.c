@@ -5,6 +5,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <zephyr.h>
+#include <fs/fs.h>
 #include "vi.h"
 
 int xrow, xoff, xtop;		/* current row, column, and top row */
@@ -368,7 +370,7 @@ static int ec_edit(char *ec)
 	char msg[128];
 	char cmd[EXLEN];
 	char path[EXLEN];
-	int fd;
+	struct fs_file_t fd;
 	ex_cmd(ec, cmd);
 	if (!ex_filearg(ec, path, 0))
 		return 1;
@@ -385,10 +387,10 @@ static int ec_edit(char *ec)
 	}
 	if (path[0] || !bufs[0].path)
 		bufs_switch(bufs_open(path));
-	fd = open(ex_path(), O_RDONLY);
-	if (fd >= 0) {
-		int rd = lbuf_rd(xb, fd, 0, lbuf_len(xb));
-		close(fd);
+	int ret = fs_open(&fd, ex_path(), FS_O_READ);
+	if (ret >= 0) {
+		int rd = lbuf_rd(xb, &fd, 0, lbuf_len(xb));
+		fs_close(&fd);
 		snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [r]\n",
 				ex_path(), lbuf_len(xb));
 		if (rd)
@@ -426,18 +428,19 @@ static int ec_read(char *ec)
 			lbuf_edit(xb, obuf, pos, pos);
 		free(obuf);
 	} else {
-		int fd = open(path, O_RDONLY);
+		struct fs_file_t fd;
+		int ret = fs_open(&fd, path, FS_O_READ);
 		int pos = lbuf_len(xb) ? end : 0;
-		if (fd < 0) {
+		if (ret < 0) {
 			ex_show("read failed\n");
 			return 1;
 		}
-		if (lbuf_rd(xb, fd, pos, pos)) {
+		if (lbuf_rd(xb, &fd, pos, pos)) {
 			ex_show("read failed\n");
-			close(fd);
+			fs_close(&fd);
 			return 1;
 		}
-		close(fd);
+		fs_close(&fd);
 	}
 	xrow = end + lbuf_len(xb) - n - 1;
 	snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [r]\n",
@@ -473,7 +476,7 @@ static int ec_write(char *ec)
 		cmd_pipe(arg + 1, ibuf, 1, 0);
 		free(ibuf);
 	} else {
-		int fd;
+		struct fs_file_t fd;
 		if (!strchr(cmd, '!') && bufs[0].path &&
 				!strcmp(bufs[0].path, path) &&
 				mtime(bufs[0].path) > bufs[0].mtime) {
@@ -484,17 +487,17 @@ static int ec_write(char *ec)
 			ex_show("write failed: file exists\n");
 			return 1;
 		}
-		fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, conf_mode());
-		if (fd < 0) {
+		int ret = fs_open(&fd, path, FS_O_WRITE | FS_O_CREATE); //jturnsek!
+		if (ret < 0) {
 			ex_show("write failed: cannot create file\n");
 			return 1;
 		}
-		if (lbuf_wr(xb, fd, beg, end)) {
+		if (lbuf_wr(xb, &fd, beg, end)) {
 			ex_show("write failed\n");
-			close(fd);
+			fs_close(&fd);
 			return 1;
 		}
-		close(fd);
+		fs_close(&fd);
 	}
 	snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [w]\n",
 			path, end - beg);

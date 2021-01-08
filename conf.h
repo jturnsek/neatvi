@@ -91,6 +91,12 @@ static struct highlight {
 	{"py", {0, 0 | SYN_BD}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
 	{"py", {4}, "[\"']([^\"']|\\\\\")*[\"']"},
 
+	/* lua */ //jturnsek TODO
+	{"lua", {2}, "^#.*$"},
+	{"lua", {5}, "\\<(and|break|do|else|elseif|end|false|for|function|if|in|local|nil|not|or|repeate|return|then|true|until|while)\\>"},
+	{"lua", {0, 0 | SYN_BD}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
+	{"lua", {4}, "[\"']([^\"']|\\\\\")*[\"']"},
+
 	/* neatmail */
 	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 5, 8 | SYN_BD},
 		"^([ROU])([0-9]+)\t([^\t]*)\t([^\t]*)"},
