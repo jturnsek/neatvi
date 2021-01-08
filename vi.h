@@ -8,8 +8,8 @@
 /* line buffer, managing a number of lines */
 struct lbuf *lbuf_make(void);
 void lbuf_free(struct lbuf *lbuf);
-int lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end);
-int lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end);
+int lbuf_rd(struct lbuf *lbuf, struct fs_file_t *fd, int beg, int end);
+int lbuf_wr(struct lbuf *lbuf, struct fs_file_t *fd, int beg, int end);
 void lbuf_edit(struct lbuf *lbuf, char *s, int beg, int end);
 char *lbuf_cp(struct lbuf *lbuf, int beg, int end);
 char *lbuf_get(struct lbuf *lbuf, int pos);
