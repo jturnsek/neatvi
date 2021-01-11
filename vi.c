@@ -1349,7 +1349,7 @@ static void vi(void)
 	term_kill();
 }
 
-int main(int argc, char *argv[])
+int vi_main(int argc, char *argv[])
 {
 	int i;
 	char *prog = strchr(argv[0], '/') ? strrchr(argv[0], '/') + 1 : argv[0];
